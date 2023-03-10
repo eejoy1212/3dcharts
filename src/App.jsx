@@ -1,92 +1,122 @@
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
 import "./App.css";
 import MyLighteningChart from "./MyLighteningChart";
 // import MyEchartsHeatmap from './MyEchartsHeatmap';
 // const MyEchartsHeatmap = lazy(() => import("./MyEchartsHeatmap"));
+let direction = true;
+const arrayLength = 1024 * 8;
+const viewLength = 30;
+const interval = 500;
 let timer;
-let idx = 0;
 function App() {
-  const [data, setData] = useState([]);
-  const [started, setStarted] = useState(false);
+  const [data1, setData1] = useState([]);
+  const [data2, setData2] = useState([]);
+  const [data3, setData3] = useState([]);
   const [num, setNum] = useState(-120);
-  const [col, setCol] = useState(0);
+
+  const ucGenData = useCallback((data, setData, value, type) => {
+    if (value >= -50) direction = false;
+    else if (value <= -120) direction = true;
+
+    const temp = [];
+    for (let i = 0; i < arrayLength; i++) {
+      switch (type) {
+        case 0:
+          temp.push(value);
+          break;
+        case 1:
+          temp.push(Math.random() * -120);
+          break;
+        case 2:
+          temp.push(Math.random() * (-30 - -90) - 90);
+          break;
+        case 3:
+          temp.push(Math.random() * (-70 - -120) - 120);
+          break;
+      }
+    }
+
+    // console.log(direction, value);
+
+    if (temp.length > 0) {
+      setData((prev) => {
+        if (data.length >= viewLength) return [...prev.slice(1), temp];
+        else return [...prev, temp];
+      });
+    }
+  }, []);
   // const []
-  console.log("들어간 데이터", data);
+  // console.log("들어간 데이터", data);
   // console.log("num", num);
   // 확대했을때 x축 0.5단위
-  // 빼고 다시 넣었을때 인텐시티가 0이된다. 색은 잘나온다. 
+  // 빼고 다시 넣었을때 인텐시티가 0이된다. 색은 잘나온다.
   return (
     <div className="App">
       <Suspense fallback={<div>Loading...</div>}>
-        <button
-          type="button"
-          onClick={() => {
-            //  timer=  setInterval(() => {
-            const temp = [];
-            //  const val=100;
-            if(num < -50){
-              setNum((prev) => prev + 1);
-            }
-            else{
-              setNum((prev) => prev - 1);
-            }
-             
-            for (let i = 0; i < 2048 * 4; i++) {
-              temp.push({ x: i, y: num });
-            }
-            console.log("num", num)
-
-            if (temp.length > 0) {
-              setData((prev) => [...prev, temp]);
-            }
-            // setNum(!num);
-            setStarted(true);
-            setCol((prev) => prev + 1);
-      
-          }}
-        >
-          데이터 넣기
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            // setData((prev) => prev.slice(1));
-            setData((prev) => prev.splice(1,data.length-1));
-            // setData((prev)=>prev.filter((_,i)=>i!==0))
-          }}
-        >
-          맨앞에거 뺴기
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            timer = setInterval(() => {
-              const temp = [];
-              for (let i = 0; i < 2048 * 4; i++) {
-                temp.push({ x: i, y: Math.random() * 100 });
-              }
-              if (temp.length > 0) {
-                setData((prev) => [...prev, temp]);
-              }
-              setStarted(true);
-            }, 1000);
-          }}
-        >
-          연속해서 데이터 넣기
-        </button>
-        <button
-          onClick={() => {
-            setStarted(false);
-            clearInterval(timer);
-          }}
-        >
-          데이터 그만 넣기
-        </button>
+        <div>
+          <button
+            type="button"
+            onClick={() => {
+              // const temp = new Array(arrayLength);
+              //  const val=100;
+              setNum((prev) => {
+                return direction ? prev + 3 : prev - 3;
+              });
+              ucGenData(data1, setData1, num, 0);
+              ucGenData(data2, setData2, num, 1);
+              ucGenData(data3, setData3, num, 2);
+            }}
+          >
+            데이터 넣기
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              // if (data1.length > 0) setData1((prev) => prev.slice(1));
+              // if (data2.length > 0) setData2((prev) => prev.slice(1));
+              // if (data3.length > 0) setData3((prev) => prev.slice(1));
+              timer = setInterval(() => {
+                setNum((prev) => {
+                  return direction ? prev + 3 : prev - 3;
+                });
+                ucGenData(data1, setData1, num, 3);
+                ucGenData(data2, setData2, num, 1);
+                ucGenData(data3, setData3, num, 2);
+              }, interval);
+            }}
+          >
+            Start
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              // if (data1.length > 0) setData1((prev) => prev.slice(1));
+              // if (data2.length > 0) setData2((prev) => prev.slice(1));
+              // if (data3.length > 0) setData3((prev) => prev.slice(1));
+              clearInterval(timer);
+            }}
+          >
+            Stop
+          </button>
+        </div>
         <MyLighteningChart
-          id="chart-1"
-          data={data}
-          started={started}
-          col={col}
+          // style={{ height: "100%", display: "inline-block" }}
+          data={data1}
+          viewLength={viewLength}
+          arrayLength={arrayLength}
+          id="chart1"
+        />
+        <MyLighteningChart
+          data={data2}
+          viewLength={viewLength}
+          arrayLength={arrayLength}
+          id="chart2"
+        />
+        <MyLighteningChart
+          data={data3}
+          viewLength={viewLength}
+          arrayLength={arrayLength}
+          id="chart3"
         />
       </Suspense>
     </div>

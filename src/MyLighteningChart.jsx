@@ -17,10 +17,13 @@ import {
   synchronizeAxisIntervals,
   Themes,
 } from "@arction/lcjs";
-import { makeFlatTheme } from "@arction/lcjs-themes";  
-let xxxx=0;
+import { makeFlatTheme } from "@arction/lcjs-themes";
+
+const historyMs = 50;
+const sampleRateHz = 35;
+
 export default function MyLighteningChart(props) {
-  const { data, id,started,col } = props;
+  const { data, id, viewLength, arrayLength } = props;
   const chartRef = useRef(undefined);
 
   useEffect(() => {
@@ -47,10 +50,10 @@ export default function MyLighteningChart(props) {
         textPixelSnappingEnabled: false,
       })
       .setBackgroundFillStyle(new SolidFill({ color: ColorHEX("#2F2E30") }))
-      .setColumnWidth(0, 1)
-      .setColumnWidth(1, 0.2)
-      .setRowHeight(0, 1)
-      .setRowHeight(1, 0.3)
+      .setColumnWidth(0, 0.5)
+      .setColumnWidth(1, 0.5)
+      .setRowHeight(0, 0.5)
+      .setRowHeight(1, 0.5)
       .setSplitterStyle(
         new SolidLine({
           thickness: 2,
@@ -73,7 +76,7 @@ export default function MyLighteningChart(props) {
           fillStyle: new SolidFill({ color: ColorHEX("262527") }),
         })
       );
-     
+
     const chartProjectionY = dash
       .createChartXY({
         columnIndex: 1,
@@ -91,31 +94,8 @@ export default function MyLighteningChart(props) {
         })
       )
       .setTitleFillStyle(emptyFill)
-      .setPadding({ top: 44 })
-      .setMouseInteractions(false);
-    chartProjectionY
-      .getDefaultAxisY()
-      .setScrollStrategy(undefined)
-      .setMouseInteractions(false);
-    synchronizeAxisIntervals(
-      chartSpectrogram.getDefaultAxisY(AxisScrollStrategies.fitting),
-      chartProjectionY.getDefaultAxisY(AxisScrollStrategies.fitting)
-    );
-    chartProjectionY
-      .getDefaultAxisX()
-      .setTickStrategy((tickStrategy) =>
-        tickStrategy
-          .setNumericUnits(true)
-          .setMajorTickStyle((tickStyle) =>
-            tickStyle.setLabelFont((font) => font.setColor(ColorCSS("white")))
-          )
-      )
-      .setTitleFont((fontSettings) => fontSettings.setSize(50))
-      .setScrollStrategy(AxisScrollStrategies.progressive)
-      .setInterval({ start: 0, end: 1, stopAxisAfter: 1 })
-      .setMouseInteractions(false);
-   
-    
+      .setPadding({ top: 44 });
+    // .setMouseInteractions(false);
     const chartProjectionX = dash
       .createChartXY({
         columnIndex: 0,
@@ -132,28 +112,72 @@ export default function MyLighteningChart(props) {
         })
       )
       .setTitleFillStyle(emptyFill);
-  
-    chartProjectionX.getDefaultAxisX().setScrollStrategy(undefined).setMouseInteractions(false);
+    const chart3d = dash
+      .createChart3D({
+        columnIndex: 1,
+        rowIndex: 1,
+      })
+      .setTitle("3d");
+    chart3d
+      .getDefaultAxisX(AxisScrollStrategies.progressive)
+      .setInterval({ start: 0, end: viewLength, stopAxisAfter: false });
+    chart3d
+      .getDefaultAxisY(AxisScrollStrategies.progressive)
+      .setInterval({ start: 0, end: 8192, stopAxisAfter: false });
+    chartProjectionY
+      .getDefaultAxisY()
+      .setScrollStrategy(undefined)
+      .setMouseInteractions(false);
+    // chartSpectrogram.getDefaultAxisY().setTitle("Frequency (Hz)");
+    synchronizeAxisIntervals(
+      chartSpectrogram
+        .getDefaultAxisY(AxisScrollStrategies.progressive)
+        .setInterval({ start: 0, end: 8192, stopAxisAfter: false }),
+      chartProjectionY
+        .getDefaultAxisY(AxisScrollStrategies.progressive)
+        .setInterval({ start: 0, end: 8192, stopAxisAfter: false })
+    );
+    chartProjectionY
+      .getDefaultAxisX()
+      .setScrollStrategy(undefined)
+      .setMouseInteractions(false);
+    chartProjectionY
+      .getDefaultAxisX()
+      .setTickStrategy((tickStrategy) =>
+        tickStrategy
+          .setNumericUnits(true)
+          .setMajorTickStyle((tickStyle) =>
+            tickStyle.setLabelFont((font) => font.setColor(ColorCSS("white")))
+          )
+      )
+      .setTitleFont((fontSettings) => fontSettings.setSize(50))
+      .setScrollStrategy(AxisScrollStrategies.progressive)
+      .setInterval({ start: 0, end: -120, stopAxisAfter: true })
+      .setMouseInteractions(false);
+
+    chartProjectionX
+      .getDefaultAxisX()
+      .setScrollStrategy(undefined)
+      .setMouseInteractions(false);
     chartProjectionX
       .getDefaultAxisY()
-      .setScrollStrategy(AxisScrollStrategies.fitting)
-      .setInterval({ start: 0, end: 1, stopAxisAfter: false })
+      .setScrollStrategy(AxisScrollStrategies.progressive)
+      .setInterval({ start: -120, end: 0, stopAxisAfter: false })
       .setMouseInteractions(false);
+    chartSpectrogram
+      .getDefaultAxisX()
+      .setScrollStrategy(AxisScrollStrategies.progressive)
+      .setInterval({ start: 0, end: viewLength, stopAxisAfter: false });
     synchronizeAxisIntervals(
       chartSpectrogram
         .getDefaultAxisX()
-        .setScrollStrategy(AxisScrollStrategies.fitting),
+        .setScrollStrategy(AxisScrollStrategies.progressive)
+        .setInterval({ start: 0, end: viewLength, stopAxisAfter: false }),
       chartProjectionX
         .getDefaultAxisX()
-        .setScrollStrategy(AxisScrollStrategies.fitting)
+        .setScrollStrategy(AxisScrollStrategies.progressive)
+        .setInterval({ start: 0, end: viewLength, stopAxisAfter: false })
     );
-
-    //   const chart3d=dash.createChart3D({
-    //     columnIndex: 1,
-    //     rowIndex: 1,
-    // })
-    // .setTitle('3d')
-
     const chartY = chartProjectionY
       .addLineSeries({
         dataPattern: {
@@ -162,7 +186,8 @@ export default function MyLighteningChart(props) {
           allowDataGrouping: true,
         },
       })
-      .setName("차트 Y").setCursorSolveBasis('nearest-y');
+      .setName("차트 Y")
+      .setCursorSolveBasis("nearest-y");
     const chartX = chartProjectionX
       .addLineSeries({
         dataPattern: {
@@ -171,36 +196,60 @@ export default function MyLighteningChart(props) {
           allowDataGrouping: true,
         },
       })
-      .setName("차트 X").setCursorSolveBasis('nearest');
-    // Store references to chart components.
-   
-  // chartSpectrogram.onSeriesBackgroundMouseMove((e) => {
-  // // console.log('ee',e.pixelScale)
-  // })
-  // const theme = Themes.light;
+      .setName("차트 X")
+      .setCursorSolveBasis("nearest");
 
-  // chartRef.current = { chartSpectrogram,chartY, chartX };
- 
-  //  console.log('tempheat',tempHeat)\
-//   const lut = new LUT({
-//     interpolate: true,
-//     steps: regularColorSteps(-120,-50,theme.examples.intensityColorPalette),
-// })
-  // const heat=   chartSpectrogram.addHeatmapGridSeries({
+    // chartSpectrogram.onBackgroundMouseClick();
+    const theme = Themes.light;
 
-  //   columns:col,
-  //   rows: 2048*4,
-  // })
-  // .setMouseInteractions(true)
-  // .setWireframeStyle(emptyLine)
-  // .setFillStyle(
-  //   new PalettedFill({
-  //     lookUpProperty: "value",
-  
-  //     lut:lut
-  //   })
-  // );
-    chartRef.current = {  chartSpectrogram,chartY, chartX };
+    const lut = new LUT({
+      interpolate: true,
+      units: "dB",
+      steps: regularColorSteps(-120, -50, theme.examples.intensityColorPalette),
+    });
+    chartSpectrogram
+      .getDefaultAxisX()
+      .setTickStrategy(AxisTickStrategies.Numeric, (strategy) =>
+        strategy
+          .setMinorFormattingFunction(
+            (tickPosition) =>
+              `${tickPosition
+                .toFixed(0)
+                .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}s`
+          )
+          .setMajorFormattingFunction(
+            (tickPosition) =>
+              `${tickPosition
+                .toFixed(0)
+                .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}s`
+          )
+          .setCursorFormatter((value) => {
+            return `${value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}s`;
+          })
+      );
+    const surfaceSeries3D = chart3d
+      .addSurfaceScrollingGridSeries({
+        scrollDimension: "columns",
+        columns: viewLength,
+        rows: arrayLength,
+        // step: { x: 1, z: 1 },
+      })
+      // .setMouseInteractions(true)
+      .setWireframeStyle(emptyLine)
+      .setFillStyle(
+        new PalettedFill({
+          lookUpProperty: "y",
+          lut: lut,
+        })
+      );
+    chartRef.current = {
+      chartSpectrogram,
+      lut,
+      chartX,
+      chartY,
+      surfaceSeries3D,
+    };
+
     // Return function that will destroy the chart when component is unmounted.
     return () => {
       // Destroy chart.
@@ -212,94 +261,70 @@ export default function MyLighteningChart(props) {
   }, [id]);
 
   useEffect(() => {
-   if (!started)return;
     const components = chartRef.current;
     if (!components) return;
-    const { chartSpectrogram, chartY, chartX } = components;
-    const tempHeat = [];
-    for (let i = 0; i < data.length; i++) {
-      const tempYvals = data[i].map((val) => val.y);
-      tempHeat.push(tempYvals);
-    }
-    console.log('hhhhhhhh',tempHeat)
-    // const theme = Themes.light;
+    if (data.length === 0) return;
+    const { chartSpectrogram, lut, chartX, chartY, surfaceSeries3D } =
+      components;
+    const heat = chartSpectrogram
+      .addHeatmapGridSeries({
+        columns: data.length,
+        rows: arrayLength,
+      })
+      .setMouseInteractions(true)
+      .setWireframeStyle(emptyLine)
+      .setFillStyle(
+        new PalettedFill({
+          lookUpProperty: "value",
+          lut: lut,
+        })
+      );
+    heat.onMouseClick((t, ev) => {
+      try {
+        const m = chartSpectrogram.engine.clientLocation2Engine(
+          ev.clientX,
+          ev.clientY
+        );
+        const onScale = chartSpectrogram.solveNearest(m).location;
+        const yValIndex = Math.round(onScale.x);
+        const yVals = data[yValIndex].map((v, i) => {
+          return { x: v, y: i };
+        });
+        chartY.clear().add(yVals);
+        const xValIndex = Math.round(onScale.y);
+        const xVals = data.map((v, i) => {
+          return { x: i, y: v[xValIndex] };
+        });
+        chartX.clear().add(xVals);
+      } catch {}
+    });
+    heat.invalidateIntensityValues(data);
 
-  // chartRef.current = { chartSpectrogram,chartY, chartX };
+    const yValIndex = data.length - 1;
+    const yVals = data[yValIndex].map((v, i) => {
+      return { x: v, y: i };
+    });
+    chartY.clear().add(yVals);
+    const xValIndex = data[0].length - 1;
+    const xVals = data.map((v, i) => {
+      return { x: i, y: v[xValIndex] };
+    });
+    chartX.clear().add(xVals);
 
-  const theme = Themes.light;
-
-  const lut = new LUT({
-    interpolate: true,
-    steps: regularColorSteps(-120,-50,theme.examples.intensityColorPalette),
-})
- const heat=   chartSpectrogram.addHeatmapGridSeries({
-
-     columns:col,
-     rows: 2048*4,
-   })
-   .setMouseInteractions(true)
-   .setWireframeStyle(emptyLine)
-   .setFillStyle(
-     new PalettedFill({
-       lookUpProperty: "value",
-   
-       lut:lut
-     })
-   );
-   console.log('tempheat',tempHeat)
-// surfaceSeries3D.dispose();
-// chart3d.dispose();
-console.log('클리어안됨',tempHeat)
-// heat.clear();
-heat.invalidateIntensityValues(tempHeat);
-
-    const yVals = [];
-    const xVals = [];
-    // for (let i = 0; i < tempHeat.length; i++) {
-    if (tempHeat.length > 0) {
-      const lastIdx = tempHeat.length - 1;//좌표값가져와서 넣어주면 됨...
-      const lastYvalues = tempHeat[lastIdx];//호버하면 좌표값 받아와서 바뀜
-      console.log('마지막 y', lastYvalues)
-      for (let i = 0; i < lastYvalues.length; i++) {
-        yVals.push({ x: lastYvalues[i], y: i });
-      }
-      console.log('yVals', yVals)
-      const lastXIdx=3;
-      for (let i = 0; i < tempHeat.length; i++) {
-        // for (let j = 0; j < tempHeat[i].length; j++) {
-          
-          xVals[i] = { x: i, y: tempHeat[i][lastXIdx] };
-        // }
-      }
-    }
-console.log('xVals', xVals)
-    console.log("yVals", yVals);
-    chartY.clear();
-    if (yVals.length > 0) {
-      chartY.add(yVals);
-    }
-    chartX.clear();
-    if (xVals.length > 0) {
-      chartX.add(xVals);
-    }
-   
-    console.log('xxxx',xxxx)
-    xxxx=1;
-   
-      // chartRef.current={chartSpectrogram}
-
-   
-  //     // showProjection(locationAxis.x, locationAxis.y)
-  // })  
-  // chartRef.current = { chartSpectrogram };
-  return () => {
-    // Destroy chart.
-    console.log("destroy chart");
-  
-  };
-  }, [data, chartRef,started]);
+    surfaceSeries3D.addValues({ yValues: [data[yValIndex]] });
+    console.log(data.length);
+    return () => {
+      // Destroy chart.
+      // console.log("destroy chart");
+    };
+  }, [data, chartRef, viewLength]);
 
   return (
-    <div id={id} ref={chartRef}  style={{ width: "100%", height: "80%" }} ></div>
+    <div
+      id={id}
+      ref={chartRef}
+      style={{ width: "500px", height: "700px", display: "inline-block" }}
+      // style={{ width: "300px", height: "300px", display: "inline-block" }}
+    ></div>
   );
 }
